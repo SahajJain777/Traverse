@@ -1,0 +1,22 @@
+{
+  "name": "write_scoped_file",
+  "description": "Call this tool to write or modify a single file within the repository. You must only execute this after reviewing the architecture ledger and explaining your plan to the orchestrator.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "file_path": {
+        "type": "string",
+        "description": "The exact path of the file to be written (e.g., 'backend/routers/chat.py')."
+      },
+      "code_content": {
+        "type": "string",
+        "description": "The complete, raw code to be written to the file. Must adhere to junior-readable standards."
+      },
+      "purpose": {
+        "type": "string",
+        "description": "A one-sentence explanation of what this specific file accomplishes."
+      }
+    },
+    "required": ["file_path", "code_content", "purpose"]
+  }
+}

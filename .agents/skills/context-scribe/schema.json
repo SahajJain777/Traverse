@@ -1,0 +1,27 @@
+{
+  "name": "write_phase_summary",
+  "description": "Call this tool at the conclusion of every build phase. It generates a structured markdown summary of what was built, verified, and installed. Do not proceed to the next phase until the orchestrator approves this summary.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "phase_number": {
+        "type": "integer",
+        "description": "The number of the completed phase (1-7)."
+      },
+      "files_created": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "List of all files created or significantly modified during this phase."
+      },
+      "verification_results": {
+        "type": "string",
+        "description": "A clear PASS/FAIL report of the steps verified in the browser or via API."
+      },
+      "notes": {
+        "type": "string",
+        "description": "Any deviations from the original plan or potential issues encountered."
+      }
+    },
+    "required": ["phase_number", "files_created", "verification_results", "notes"]
+  }
+}

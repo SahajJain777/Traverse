@@ -1,0 +1,23 @@
+{
+  "name": "update_architecture_ledger",
+  "description": "Call this tool to update the PROJECT_STATE.md file whenever a fundamental schema, environment variable, or architectural rule is modified by the orchestrator. You must execute this tool before implementing the change in the codebase.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "section_to_update": {
+        "type": "string",
+        "enum": ["Tech Stack", "Schemas", "Environment Variables", "Global Rules"],
+        "description": "The specific section of the ledger that requires an update."
+      },
+      "new_state_content": {
+        "type": "string",
+        "description": "The exact markdown content to be injected or updated in the ledger."
+      },
+      "justification": {
+        "type": "string",
+        "description": "A brief explanation of why this state change occurred."
+      }
+    },
+    "required": ["section_to_update", "new_state_content", "justification"]
+  }
+}
