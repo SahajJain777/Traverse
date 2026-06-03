@@ -72,3 +72,31 @@ def build_visual_prompt(problem: str, algorithm_name: str, language: str) -> str
         .replace("{{ALGORITHM_NAME}}", algorithm_name)
         .replace("{{LANGUAGE}}", language)
     )
+
+
+def build_socratic_prompt(
+    problem: str,
+    last_attempt: str,
+    language: str,
+    last_hint: str,
+    conversation_history: str,
+    student_question: str,
+) -> str:
+    template = load_prompt("socratic_tutor.txt")
+    return (
+        template.replace("{{PROBLEM}}", problem)
+        .replace("{{LAST_ATTEMPT}}", last_attempt)
+        .replace("{{LANGUAGE}}", language)
+        .replace("{{LAST_HINT}}", last_hint)
+        .replace("{{CONVERSATION_HISTORY}}", conversation_history)
+        .replace("{{STUDENT_QUESTION}}", student_question)
+    )
+
+
+def build_syntax_check_prompt(problem: str, code: str, language: str) -> str:
+    template = load_prompt("syntax_analyser.txt")
+    return (
+        template.replace("{{PROBLEM}}", problem)
+        .replace("{{CODE}}", code)
+        .replace("{{LANGUAGE}}", language)
+    )

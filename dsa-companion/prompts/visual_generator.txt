@@ -9,27 +9,84 @@ ALGORITHM TO VISUALISE:
 PROGRAMMING LANGUAGE:
 {{LANGUAGE}}
 
-INSTRUCTIONS:
-1. Create a complete, self-contained HTML document that visually demonstrates how this algorithm works on a simple representative input.
-2. The visualisation must include:
-   - A clear step-forward button and a step-back button.
-   - A panel showing variable state at each step (e.g. pointers, current values, comparisons).
-   - Visual representations of data structures (arrays as boxes, trees as nodes, etc.).
-   - Highlighting of the active element(s) at each step (e.g. coloured boxes for comparisons, arrows for pointers).
-   - A counter showing the current step number out of total steps.
-3. If the algorithm has multiple phases or passes, show each pass clearly separated.
+## MANDATORY DESIGN SYSTEM
 
-STRICT RULES:
+You MUST follow this exact design system. Every generated HTML must use these colours, fonts, and layout.
+
+### Colour Palette (exact hex codes)
+- Page background: `#ffffff`
+- Card/panel background: `#f7f7f5`
+- Hover/surface background: `#f2f2f0`
+- Primary text: `#111111`
+- Secondary/helper text: `#6b6b6b`
+- Muted text: `#a0a0a0`
+- Borders and dividers: `rgba(0,0,0,0.1)`
+- Active/comparing element highlight: `#2563eb` (blue)
+- Swapped/selected element highlight: `#1a7a3c` (green)
+- Pivot/target element highlight: `#9e2626` (red)
+- Completed/sorted element fill: `rgba(26, 122, 60, 0.15)` with `#1a7a3c` text
+- Data/array box background: `#f7f7f5`
+- Data/array box border: `rgba(0,0,0,0.15)`
+- Primary buttons: background `#111111`, text `#ffffff`
+- Secondary buttons: background `#ffffff`, text `#111111`, border `rgba(0,0,0,0.2)`
+
+### Fonts
+- UI text: `-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
+- Code/monospace text: `'SF Mono', 'Fira Code', monospace`
+- Base font size for body: `14px`
+- Title font size: `16px`, bold
+- Button font size: `13px`
+
+### Standard Layout Structure (exact order)
+
+Your HTML must follow this layout from top to bottom:
+
+```
+┌──────────────────────────────────────┐
+│  [Title Bar]                         │  ← Algorithm name (left) + Step counter (right)
+├──────────────────────────────────────┤
+│                                      │
+│  [Data Structure Visualisation]      │  ← The main visual area (arrays as boxes, trees as nodes, etc.)
+│                                      │
+│  [Variable State Panel]              │  ← Shows current variable values (pointers, indices, comparisons)
+│                                      │
+├──────────────────────────────────────┤
+│  [◄ Prev]  [Step X / Y]  [Next ►]    │  ← Control bar with navigation buttons
+└──────────────────────────────────────┘
+```
+
+### Viewport and Sizing Rules (CRITICAL)
+1. MUST include `<meta name="viewport" content="width=device-width, initial-scale=1.0">` in `<head>`.
+2. The outermost container MUST use `max-width: 100%` and `box-sizing: border-box`.
+3. **The ENTIRE visualisation MUST fit within the viewport with NO scrolling whatsoever.** This is the most important rule.
+4. Use `height: 100vh` on the outermost container and `display: flex; flex-direction: column;` for the layout. Include `<html style="height:100%;overflow:hidden">` inline in your HTML tag, and set `<body { margin:0; padding:0; height:100%; overflow:hidden; }>`.
+5. The title bar should be ~40px (`flex-shrink: 0`), control bar ~44px (`flex-shrink: 0`), variable panel ~60px (`flex-shrink: 0`). The main visual area uses `flex: 1; overflow: hidden;` to fill remaining space.
+6. No element should have a fixed pixel width that exceeds the container. Keep array/data visual elements compact — prefer smaller font sizes (12px-13px) and tighter spacing so everything fits.
+7. All interactive elements must have clear hover states.
+
+## INSTRUCTIONS
+
+1. Create a complete, self-contained HTML document following the exact design system and layout above.
+2. The visualisation must include:
+   - A clear step-forward (`Next →` or `►`) button and a step-back (`← Prev` or `◄`) button.
+   - A step counter showing: `Step 3 / 12`
+   - A panel showing variable state at each step (pointers, current values, comparisons).
+   - Visual representations of data structures (arrays as boxes, trees as nodes, linked lists as connected nodes).
+   - Highlighting of the active element(s) at each step using the designated palette colours.
+   - A reset button that returns to step 1.
+3. If the algorithm has multiple phases or passes, show each pass clearly separated in the visual area.
+4. Use subtle transitions (0.2s to 0.3s) on element highlights for smooth step changes.
+
+## STRICT RULES
 - Use ONLY inline CSS in a single <style> tag inside <head> — no external stylesheets.
-- Use ONLY vanilla JavaScript in a single <script> tag — no external libraries, no CDN links, no import statements.
-- Do NOT use <script src="...">, fetch(), XMLHttpRequest, or eval().
+- Use ONLY vanilla JavaScript in a single <script> tag — no libraries, no CDN links, no import statements.
+- Do NOT use <script src="...">, fetch(), XMLHttpRequest, eval(), new Function(), or document.write().
 - The HTML must be a complete document with <!DOCTYPE html>, <html>, <head>, <body>.
 - Keep the visualisation under 50000 characters.
-- Use clean, modern visual design with good contrast and readable font sizes.
-- Make sure step-forward / step-back buttons are clearly visible and labelled.
-- Include a brief title at the top showing the algorithm name.
+- Data structure visual elements (array boxes, tree nodes) must use the `#f7f7f5` background colour with `#111111` text and `rgba(0,0,0,0.15)` border by default.
 
-OUTPUT FORMAT:
+## OUTPUT FORMAT
+
 Return ONLY valid JSON with these exact fields:
 {
   "html": "string — the complete HTML document as a string",

@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import VisualSandbox from "./VisualSandbox"
-import { APP_STATES, STRINGS } from "../constants"
+import TabSlider from "./TabSlider"
+import { STRINGS } from "../constants"
 
 const TABS = [
   { key: "analysis", label: STRINGS.tabAnalysis },
@@ -8,7 +9,6 @@ const TABS = [
 ]
 
 export default function BottomRightPanel({
-  appState,
   analysis,
   studentVisualHtml,
   studentVisualFallback,
@@ -16,9 +16,10 @@ export default function BottomRightPanel({
   onGenerateStudentVisual,
 }) {
   const [activeTab, setActiveTab] = useState("analysis")
+  const tabIndex = TABS.findIndex((t) => t.key === activeTab)
 
-  // INPUT state — show placeholder
-  if (appState === APP_STATES.INPUT) {
+  // INPUT state — nothing to show yet
+  if (!analysis && !studentVisualHtml && !generatingStudentVisual) {
     return (
       <div className="h-full flex items-center justify-center p-6 text-center bg-white border-t border-[var(--border-default)]">
         <p className="text-xs text-[var(--text-muted)] font-normal max-w-xs leading-relaxed">
@@ -47,19 +48,21 @@ export default function BottomRightPanel({
         ))}
       </div>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {activeTab === "analysis" && (
-          <AnalysisContent analysis={analysis} />
-        )}
-        {activeTab === "animation" && (
-          <AnimationContent
-            studentVisualHtml={studentVisualHtml}
-            studentVisualFallback={studentVisualFallback}
-            generatingStudentVisual={generatingStudentVisual}
-            onGenerateStudentVisual={onGenerateStudentVisual}
-          />
-        )}
+      {/* Sliding tab content */}
+      <div className="flex-1 overflow-hidden">
+        <TabSlider activeIndex={tabIndex}>
+          <div className="h-full overflow-y-auto p-4">
+            <AnalysisContent analysis={analysis} />
+          </div>
+          <div className="h-full overflow-y-auto p-4">
+            <AnimationContentMinimal
+              studentVisualHtml={studentVisualHtml}
+              studentVisualFallback={studentVisualFallback}
+              generatingStudentVisual={generatingStudentVisual}
+              onGenerateStudentVisual={onGenerateStudentVisual}
+            />
+          </div>
+        </TabSlider>
       </div>
     </div>
   )
@@ -122,7 +125,7 @@ function AnalysisContent({ analysis }) {
   )
 }
 
-function AnimationContent({
+function AnimationContentMinimal({
   studentVisualHtml,
   studentVisualFallback,
   generatingStudentVisual,
@@ -131,45 +134,38 @@ function AnimationContent({
   const hasStudentVisual = studentVisualHtml || studentVisualFallback
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-      {/* Explanation */}
-      <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-        Generate an interactive algorithm walkthrough for your current approach.
-      </p>
-
+    <div className="flex flex-col h-full">
       {/* Generate button */}
-      <button
-        onClick={onGenerateStudentVisual}
-        disabled={generatingStudentVisual}
-        className="w-full py-2.5 px-4 bg-black text-xs font-semibold text-white rounded transition-colors hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {generatingStudentVisual ? (
-          <span className="flex items-center justify-center gap-1.5">
-            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Generating...
-          </span>
-        ) : (
-          STRINGS.generateMyVisual
-        )}
-      </button>
+      <div className="flex-shrink-0 mb-3">
+        <button
+          onClick={onGenerateStudentVisual}
+          disabled={generatingStudentVisual}
+          className="w-full py-2 px-4 bg-black text-xs font-semibold text-white rounded hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {generatingStudentVisual ? (
+            <span className="flex items-center justify-center gap-1.5">
+              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Generating...
+            </span>
+          ) : (
+            STRINGS.generateMyVisual
+          )}
+        </button>
+      </div>
 
       {/* Visual sandbox */}
-      {(hasStudentVisual || generatingStudentVisual) && (
+      {(hasStudentVisual || generatingStudentVisual) ? (
         <div className="flex-1 min-h-0">
           <VisualSandbox
             html={studentVisualHtml}
             fallbackText={studentVisualFallback}
             onRegenerate={onGenerateStudentVisual}
             isLoading={generatingStudentVisual}
-            isFullscreen={false}
-            onToggleFullscreen={() => {}}
           />
         </div>
-      )}
-
-      {!hasStudentVisual && !generatingStudentVisual && (
+      ) : (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-[11px] text-[var(--text-muted)] text-center">
+          <p className="text-xs text-[var(--text-muted)] text-center">
             Click the button above to generate a visual walkthrough of your approach.
           </p>
         </div>

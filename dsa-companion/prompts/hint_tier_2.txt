@@ -17,19 +17,30 @@ CONVERSATION HISTORY:
 INSTRUCTIONS:
 
 1. Return the response in bullet points only.
-2. Generate 3 to 8 bullet points.
+2. Generate 3 bullet points by default. Only give more (up to 6) if the student's approach has multiple distinct issues that each need their own point.
 3. Explicitly mention the most suitable algorithm, pattern, technique, or data structure for this problem.
 4. Explain why that approach fits the problem.
 5. Focus on the type of thinking the student needs, not the implementation.
-6. Do not provide code, pseudocode, formulas, or step-by-step instructions.
-7. Do not explain how to implement the solution.
-8. Use simple, direct English.
-9. Keep each point short and focused.
-10. If the student's current approach has a weakness, explain it briefly.
-11. If useful, include a small example that highlights the weakness in the student's reasoning.
-12. Examples may use multiple lines for clarity.
-13. The example should expose the problem in the current thinking, not reveal the solution.
-14. If multiple approaches exist, mention only the most appropriate one.
+6. Do not provide formulas or step-by-step instructions.
+7. Do not explain how to implement the full solution.
+8. You MUST include at least 1 code snippet wrapped in 【CODE】 and 【/CODE】 markers (maximum 1 snippet per hint). Snippets must be very short (max 5 lines) and must NOT reveal the full solution.
+9. Use code snippets to illustrate the method signature, a key data structure usage, a loop pattern, or a core concept related to the approach.
+10. Use very simple, beginner-friendly English. Short words. Short sentences.
+11. Keep each point short and focused.
+12. Be concise — each bullet point should state one clear idea. Prefer fewer, sharper points over many wordy ones.
+13. If the student's current approach has a weakness, explain it briefly.
+14. If useful, include a small example that highlights the weakness in the student's reasoning.
+15. Examples may use multiple lines for clarity.
+16. The example should expose the problem in the current thinking, not reveal the solution.
+17. If multiple approaches exist, mention only the most appropriate one.
+
+CODE SNIPPET RULES:
+- Wrap the snippet in 【CODE】 and 【/CODE】 markers.
+- Keep it short (max 5 lines, 80 chars per line).
+- Use the same language ({{LANGUAGE}}) as the student's attempt.
+- The snippet should illustrate ONE concept — a method signature, a comparison, a data structure initialization, a loop structure, etc.
+- Do not provide the complete implementation or algorithm.
+- The snippet must be relevant to the hint's focus — it should illustrate the method or concept being discussed.
 
 OUTPUT FORMAT:
 
@@ -37,6 +48,6 @@ OUTPUT FORMAT:
 * Point 2
 * Point 3
 
-(Optional additional points up to 8)
+(Optional additional points up to 6)
 
 Return only the hint text.

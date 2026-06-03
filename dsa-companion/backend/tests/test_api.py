@@ -212,3 +212,34 @@ class TestVisualGenerate:
             assert "html" in body
         else:
             pytest.skip("Visual endpoint requires Gemini")
+
+# ── Syntax Check ──────────────────────────────────────────────────────
+
+class TestSyntaxCheck:
+    @pytest.fixture(autouse=True)
+    def setup_session(self, client: TestClient):
+        resp = client.post("/session/create")
+        self.sid = resp.json()["session_id"]
+
+    def test_syntax_check_missing_session_returns_404(self, client: TestClient):
+        resp = client.post("/chat/check-syntax", json={
+            "session_id": "nonexistent",
+            "code": "def foo(:\n    pass",
+            "language": "python",
+        })
+        assert resp.status_code == 404
+
+    def test_syntax_check_calls_gemini_and_returns_result(self, client: TestClient):
+        """Test that the endpoint works when Gemini is available."""
+        resp = client.post("/chat/check-syntax", json={
+            "session_id": self.sid,
+            "problem": "test problem",
+            "code": "def f():\n    pass",
+            "language": "python",
+        })
+        if resp.status_code == 200:
+            body = resp.json()
+            assert "total_errors" in body
+            assert "syntax_errors" in body
+        else:
+            pytest.skip("Syntax check endpoint requires Gemini")

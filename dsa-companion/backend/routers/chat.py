@@ -11,13 +11,17 @@ from models.schemas import SubmitAttemptRequest, GoalCheckRequest
 from services.gemini_service import (
     _get_model,
     analyse_approach,
+    answer_socratic,
     check_goal_reached,
     explain_optimal,
     generate_hint,
     generate_visual,
+    check_syntax,
 )
 from services.session_manager import (
     append_message,
+    append_socratic_message,
+    clear_socratic_chat,
     get_session,
     update_session,
 )
@@ -27,6 +31,20 @@ from services.visual_validator import validate_visual_html
 class _VisualGenerateRequest(BaseModel):
     session_id: str
     algorithm_name: str
+
+
+class _SyntaxCheckRequest(BaseModel):
+    session_id: str
+    problem: str = ""
+    code: str
+    language: str
+
+
+class _SocraticRequest(BaseModel):
+    session_id: str
+    last_hint: str
+    question: str
+
 
 router = APIRouter()
 
@@ -87,6 +105,9 @@ def stream_hint(
         f"{m['role']}: {m['content']}"
         for m in session.get("conversation_history", [])
     )
+
+    # Clear previous socratic chat when a new hint is generated
+    clear_socratic_chat(session_id)
 
     def event_stream():
         full_text = ""
@@ -222,3 +243,65 @@ def generate_visual_endpoint(body: _VisualGenerateRequest):
             "fallback_text": fallback_text,
             "validation_error": reason,
         }
+
+
+@router.post("/socratic")
+def socratic_answer(body: _SocraticRequest):
+    """Answer a Socratic follow-up question for the current hint."""
+    session = get_session(body.session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    problem = session.get("problem", "")
+    attempts = session.get("attempts", [])
+    last_attempt = attempts[-1] if attempts else ""
+    language = session.get("language", "python")
+
+    # Build conversation history from socratic_chat
+    chat = session.get("socratic_chat", [])
+    conv_history = "\n".join(
+        f"Student: {m['content']}" if m['role'] == 'user' else f"Tutor: {m['content']}"
+        for m in chat
+    )
+
+    # Save the student's question
+    append_socratic_message(body.session_id, "user", body.question)
+
+    try:
+        response = answer_socratic(
+            problem=problem,
+            last_attempt=last_attempt,
+            language=language,
+            last_hint=body.last_hint,
+            conversation_history=conv_history,
+            student_question=body.question,
+        )
+    except Exception as e:
+        logger.error("socratic_answer failed", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail="Socratic tutor service is temporarily unavailable. Please check your API key and try again.",
+        )
+
+    # Save the tutor's response
+    append_socratic_message(body.session_id, "model", response)
+
+    return {"response": response}
+
+
+@router.post("/check-syntax")
+def check_syntax_endpoint(body: _SyntaxCheckRequest):
+    session = get_session(body.session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    try:
+        result = check_syntax(body.problem, body.code, body.language)
+    except Exception as e:
+        logger.error("check_syntax failed", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail="Syntax check service is temporarily unavailable. Please check your API key and try again.",
+        )
+
+    return result

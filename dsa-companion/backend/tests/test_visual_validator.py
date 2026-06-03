@@ -5,27 +5,44 @@ from services.visual_validator import validate_visual_html
 # ── Valid HTML ────────────────────────────────────────────────────────
 
 def test_valid_minimal_html():
-    """A complete, self-contained document should pass."""
-    html = "<html><head><style>body{}</style></head><body><script>let x=1</script></body></html>"
+    """A complete, self-contained document with all required elements should pass."""
+    html = """<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+      * { box-sizing: border-box; }
+      .container { max-width: 100%; }
+    </style></head><body>
+    <div class="container">
+      <span id="step-counter">Step 1 / 5</span>
+      <button onclick="prev()">Prev</button>
+      <button onclick="next()">Next</button>
+    </div>
+    <script>let x=1; function next(){} function prev(){}</script>
+    </body></html>"""
     valid, reason = validate_visual_html(html)
-    assert valid is True
+    assert valid is True, f"Expected valid, got: {reason}"
     assert reason == ""
 
 
 def test_valid_with_interactive_elements():
     """Document with step-forward/back buttons and state display is valid."""
-    html = """<html><body><script>
+    html = """<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+      * { box-sizing: border-box; }
+      .viz { max-width: 100%; }
+    </style></head><body>
+    <div class="viz">
+      <span id="step">Step 0 / 10</span>
+      <pre id="state"></pre>
+      <button onclick="next()">Next</button>
+      <button onclick="prev()">Back</button>
+    </div>
+    <script>
       let step = 0;
       function next() { step++; render(); }
       function prev() { step--; render(); }
       function render() { document.getElementById("state").textContent = step; }
     </script>
-    <pre id="state"></pre>
-    <button onclick="next()">Next</button>
-    <button onclick="prev()">Back</button>
     </body></html>"""
     valid, reason = validate_visual_html(html)
-    assert valid is True
+    assert valid is True, f"Expected valid, got: {reason}"
     assert reason == ""
 
 
@@ -123,3 +140,44 @@ def test_missing_script_tag():
     valid, reason = validate_visual_html(html)
     assert valid is False
     assert "complete document" in reason.lower()
+
+
+# ── Design system standards ───────────────────────────────────────────
+
+def test_missing_viewport_meta():
+    html = """<html><head><style>*{box-sizing:border-box;}.c{max-width:100%}</style></head>
+    <body><span>Step</span><button>Prev</button><button>Next</button>
+    <script>function next(){} function prev(){}</script></body></html>"""
+    valid, reason = validate_visual_html(html)
+    assert valid is False
+    assert "viewport" in reason.lower()
+
+
+def test_missing_max_width():
+    html = """<html><head><meta name="viewport" content="width=device-width"><style>
+      *{box-sizing:border-box}</style></head>
+    <body><span>Step</span><button>Prev</button><button>Next</button>
+    <script>function next(){} function prev(){}</script></body></html>"""
+    valid, reason = validate_visual_html(html)
+    assert valid is False
+    assert "max-width" in reason.lower()
+
+
+def test_missing_step_counter():
+    html = """<html><head><meta name="viewport" content="width=device-width"><style>
+      *{box-sizing:border-box}.c{max-width:100%}</style></head>
+    <body><button>Prev</button><button>Next</button>
+    <script>function next(){} function prev(){}</script></body></html>"""
+    valid, reason = validate_visual_html(html)
+    assert valid is False
+    assert "step" in reason.lower()
+
+
+def test_missing_nav_buttons():
+    html = """<html><head><meta name="viewport" content="width=device-width"><style>
+      *{box-sizing:border-box}.c{max-width:100%}</style></head>
+    <body><span>Step 1 / 5</span>
+    <script>console.log("hi")</script></body></html>"""
+    valid, reason = validate_visual_html(html)
+    assert valid is False
+    assert "step-back" in reason.lower() or "step-forward" in reason.lower()

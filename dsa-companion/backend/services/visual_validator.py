@@ -2,13 +2,15 @@
 
 Checks that the HTML is safe to render in a sandboxed iframe with
 only `allow-scripts` — no external resources, no network calls, no eval.
+Also enforces design system standards (viewport, structure).
 """
 
 MAX_HTML_LENGTH = 50_000
 
 
 def validate_visual_html(html: str) -> tuple[bool, str]:
-    """Validate that HTML is safe for sandboxed iframe rendering.
+    """Validate that HTML is safe for sandboxed iframe rendering and
+    follows the required design system standards.
 
     Returns:
         (is_valid: bool, reason: str) — reason is empty if valid.
@@ -22,7 +24,7 @@ def validate_visual_html(html: str) -> tuple[bool, str]:
     if "<script src" in html:
         return False, "External script tags are not allowed"
 
-    if "fetch(" in html or "XMLHttpRequest" in html or "XMLHttpRequest" in html:
+    if "fetch(" in html or "XMLHttpRequest" in html:
         return False, "Network calls (fetch/XMLHttpRequest) are not allowed"
 
     if "eval(" in html or "new Function(" in html:
@@ -36,5 +38,25 @@ def validate_visual_html(html: str) -> tuple[bool, str]:
 
     if not all(tag in html for tag in ["<html", "<body", "<script"]):
         return False, "HTML is not a complete document (missing <html>, <body>, or <script>)"
+
+    # ── Design system standards checks ──────────────────────────────
+
+    if 'name="viewport"' not in html:
+        return False, "Missing viewport meta tag — add <meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+
+    if "max-width" not in html:
+        return False, "Missing max-width CSS rule — outermost container must use max-width: 100%"
+
+    if "box-sizing" not in html:
+        return False, "Missing box-sizing CSS rule — use box-sizing: border-box on containers"
+
+    if "step" not in html.lower():
+        return False, "Missing step counter — visualisation must show a step-number display"
+
+    if "prev" not in html.lower() and "back" not in html.lower() and "previous" not in html.lower():
+        return False, "Missing step-back button — visualisation must have a 'Prev' or 'Back' navigation button"
+
+    if "next" not in html.lower():
+        return False, "Missing step-forward button — visualisation must have a 'Next' navigation button"
 
     return True, ""

@@ -49,6 +49,11 @@ export const STRINGS = {
   // Right column tabs
   tabHints:                  'Hints',
   tabAnimation:              'Animation',
+  tabSyntax:                 'Learn Syntax',
+  syntaxCheck:               'Check syntax',
+  syntaxTotalErrors:         'syntax error(s) found',
+  syntaxNoErrors:            '✓ No syntax errors detected!',
+  syntaxCheckPlaceholder:    'Paste your code in the editor, then click "Check syntax" to find and fix errors.',
 
   // Optimal overlay
   closeOptimal:               '← Back to hints',

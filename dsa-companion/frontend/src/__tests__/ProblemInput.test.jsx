@@ -17,8 +17,6 @@ vi.mock('@monaco-editor/react', () => ({
 
 function renderLeftPanel(props = {}) {
   const defaults = {
-    problem: '',
-    setProblem: vi.fn(),
     attempt: '',
     setAttempt: vi.fn(),
     language: 'python',
@@ -32,12 +30,10 @@ function renderLeftPanel(props = {}) {
 
 // ── Renders all key elements ─────────────────────────────────────────
 
-it('renders the labels, textareas, and Monaco editor', () => {
-  renderLeftPanel({ problem: 'Two Sum Problem', attempt: 'def two_sum():' })
+it('renders the code label and Monaco editor', () => {
+  renderLeftPanel({ attempt: 'def two_sum():' })
 
-  expect(screen.getByText('Problem')).toBeInTheDocument()
   expect(screen.getByText('Your solution')).toBeInTheDocument()
-  expect(screen.getByDisplayValue('Two Sum Problem')).toBeInTheDocument()
   expect(screen.getByTestId('monaco-editor')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument()
 })
@@ -69,24 +65,23 @@ it('calls setLanguage when a different language is selected', async () => {
 
 // ── Submit button states ─────────────────────────────────────────────
 
-it('submit button is disabled when input state is empty', () => {
-  renderLeftPanel({ problem: '', attempt: '' })
+it('submit button is disabled when code is empty', () => {
+  renderLeftPanel({ attempt: '' })
   const button = screen.getByRole('button', { name: /submit/i })
   expect(button).toBeDisabled()
 })
 
-it('submit button is enabled when problem and attempt contain values', () => {
-  renderLeftPanel({ problem: 'Two Sum', attempt: 'def solve():' })
+it('submit button is enabled when code has content', () => {
+  renderLeftPanel({ attempt: 'def solve():' })
   const button = screen.getByRole('button', { name: /submit/i })
   expect(button).not.toBeDisabled()
 })
 
 // ── Submit fires callback ────────────────────────────────────────────
 
-it('calls onSubmit when form is submitted', async () => {
+it('calls onSubmit with empty problem and the code content', async () => {
   const onSubmit = vi.fn()
   renderLeftPanel({
-    problem: 'Two Sum',
     attempt: 'def solve():',
     onSubmit,
   })
@@ -94,7 +89,7 @@ it('calls onSubmit when form is submitted', async () => {
   const button = screen.getByRole('button', { name: /submit/i })
   await userEvent.click(button)
 
-  expect(onSubmit).toHaveBeenCalledWith('Two Sum', 'def solve():', 'python')
+  expect(onSubmit).toHaveBeenCalledWith('', 'def solve():', 'python')
 })
 
 // ── Loading state ────────────────────────────────────────────────────

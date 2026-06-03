@@ -22,6 +22,8 @@ from services.prompt_builder import (
     build_goal_check_prompt,
     build_optimal_prompt,
     build_visual_prompt,
+    build_syntax_check_prompt,
+    build_socratic_prompt,
 )
 
 # LangChain tracing (LangSmith) is automatically enabled when these env vars are set:
@@ -155,6 +157,32 @@ def generate_visual(problem: str, algorithm_name: str, language: str) -> dict:
     prompt = build_visual_prompt(problem, algorithm_name, language)
     response = model.invoke(prompt)
     return _parse_json(response.content)
+
+
+def check_syntax(problem: str, code: str, language: str) -> dict:
+    """Analyse code for syntax errors and return corrections."""
+    model = _get_llm()
+    prompt = build_syntax_check_prompt(problem, code, language)
+    response = model.invoke(prompt)
+    return _parse_json(response.content)
+
+
+def answer_socratic(
+    problem: str,
+    last_attempt: str,
+    language: str,
+    last_hint: str,
+    conversation_history: str,
+    student_question: str,
+) -> str:
+    """Answer a Socratic follow-up question with a guiding response."""
+    model = _get_llm()
+    prompt = build_socratic_prompt(
+        problem, last_attempt, language, last_hint, conversation_history, student_question
+    )
+    response = model.invoke(prompt)
+    return response.content.strip()
+
 
 # Backward-compatible alias for code that still imports _get_model
 _get_model = _get_llm

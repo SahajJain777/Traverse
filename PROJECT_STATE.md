@@ -17,6 +17,7 @@ This document acts as the single source of truth for the project's technical spe
 | Session State | Upstash Redis | Upstash free tier |
 | Visual Sandbox | `<iframe srcdoc>` | client-side isolation |
 | Streaming | Server-Sent Events (SSE) via FastAPI | — |
+| Syntax Analysis | LLM (Gemini / Fireworks / NVIDIA) via prompt | backend endpoint |
 
 ---
 
@@ -45,6 +46,23 @@ Stored under the key: `session:{session_id}`
     "tiers_used": [],
     "goal_iterations": 0
   }
+}
+```
+
+### Syntax Check Response Schema (`POST /chat/check-syntax`)
+
+```json
+{
+  "total_errors": 0,
+  "syntax_errors": [
+    {
+      "line_number": 5,
+      "wrong_code": "string — the erroneous line",
+      "correct_code": "string — the corrected line",
+      "explanation": "string — beginner-friendly error explanation"
+    }
+  ],
+  "code_quality_notes": "string — optional style/quality observations"
 }
 ```
 
@@ -82,3 +100,4 @@ LANGCHAIN_API_KEY=          # optional, for LangSmith tracing
 6. **Monaco theme must be light.** Light background matches the white UI aesthetic. Monaco is flush to its boundaries.
 7. **Goal success triggers celebration overlays and auto-transitions.** Upon `goal_reached` becoming true, a CSS ribbon animation cascades from the top for 2.2s. At 2.4s, the bottom right panel transitions to showing the comparison view automatically.
 8. **Language selection is a top-level prop.** The selected language (Python / Java / C++) is stored in `App.jsx` state and passed down as a prop. No component figures out the language on its own.
+9. **Syntax checking is available via a third tab "Learn Syntax"** alongside Hints and Animation. It posts the current code to `/chat/check-syntax` and displays errors with line numbers, wrong code (red), corrected code (green), and explanations.

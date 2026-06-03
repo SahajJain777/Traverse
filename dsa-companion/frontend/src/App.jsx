@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import client from "./api/client"
 import useSession from "./hooks/useSession"
 import useSSE from "./hooks/useSSE"
@@ -8,6 +8,10 @@ import TopRightPanel from "./components/TopRightPanel"
 import VisualSandbox from "./components/VisualSandbox"
 import ComparisonView from "./components/ComparisonView"
 import CelebrationOverlay from "./components/CelebrationOverlay"
+import SyntaxDisplayer from "./components/SyntaxDisplayer"
+import TabSlider from "./components/TabSlider"
+
+const RIGHT_TAB_ORDER = ["hints", "animation", "syntax"]
 
 export default function App() {
   const { sessionId, loading: sessionLoading } = useSession()
@@ -27,6 +31,11 @@ export default function App() {
 
   // Right column tab state
   const [activeRightTab, setActiveRightTab] = useState("hints")
+  
+  // Syntax check state
+  const [syntaxResult, setSyntaxResult] = useState(null)
+  const [isCheckingSyntax, setIsCheckingSyntax] = useState(false)
+  const [syntaxError, setSyntaxError] = useState(null)
   const [optimalData, setOptimalData] = useState(null)
   const [visualHtml, setVisualHtml] = useState(null)
   const [visualFallback, setVisualFallback] = useState(null)
@@ -47,7 +56,17 @@ export default function App() {
   const [hintUrl, setHintUrl] = useState(null)
   const { streamedText, isStreaming, error: sseError, start: startSSE, reset: resetSSE } = useSSE(hintUrl)
 
+  // Hint history for browsing previous hints
+  const [hintHistory, setHintHistory] = useState([]) // { tier, label, text }[]
+  const [viewingHistoryIdx, setViewingHistoryIdx] = useState(null) // null = viewing current
+  const streamedTextRef = useRef("")
+
+  // Keep ref in sync with streamedText
+  streamedTextRef.current = streamedText
+
   const coldStartTimer = useRef(null)
+
+  const HINT_LABELS = ["Subtle hint", "Method hint", "Step-by-step hint"]
 
   function clearColdStart() {
     if (coldStartTimer.current) clearTimeout(coldStartTimer.current)
@@ -86,18 +105,59 @@ export default function App() {
     }
   }
 
+  // Save the current completed hint to history before switching to a new one
+  const saveCurrentHintToHistory = useCallback(() => {
+    const text = streamedTextRef.current
+    if (text && activeTier) {
+      setHintHistory(prev => {
+        if (prev.some(h => h.tier === activeTier)) return prev
+        return [...prev, { tier: activeTier, label: HINT_LABELS[activeTier - 1], text }]
+      })
+    }
+  }, [activeTier])
+
+  // Save hint when streaming completes
+  useEffect(() => {
+    if (!isStreaming && streamedText && activeTier && !hintHistory.some(h => h.tier === activeTier)) {
+      setHintHistory(prev => {
+        if (prev.some(h => h.tier === activeTier)) return prev
+        return [...prev, { tier: activeTier, label: HINT_LABELS[activeTier - 1], text: streamedText }]
+      })
+    }
+  }, [isStreaming])
+
   // Request hint tier stream
   const handleRequestHint = useCallback((tier) => {
     if (!sessionId) return
-    setActiveTier(tier)
     
-    // Map tier labels
-    const labels = ["Subtle hint", "Method hint", "Step-by-step hint"]
-    setLastUsedTier(labels[tier - 1] || "")
+    // Save current hint to history before starting a new one
+    saveCurrentHintToHistory()
+    setViewingHistoryIdx(null)
+    setActiveTier(tier)
+    setLastUsedTier(HINT_LABELS[tier - 1] || "")
 
     const url = `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/chat/hint?session_id=${sessionId}&tier=${tier}`
     setHintUrl(url)
-  }, [sessionId])
+  }, [sessionId, saveCurrentHintToHistory])
+
+  // Navigate history
+  const handleNavigateHistory = useCallback((idx) => {
+    setViewingHistoryIdx(idx)
+  }, [])
+
+  // All 3 hints exhausted?
+  const allHintsExhausted = useMemo(
+    () => hintHistory.some(h => h.tier === 3) && !isStreaming,
+    [hintHistory, isStreaming]
+  )
+
+  // Determine which hint text to show
+  const displayHint = useMemo(() => {
+    if (viewingHistoryIdx !== null && hintHistory[viewingHistoryIdx]) {
+      return hintHistory[viewingHistoryIdx].text
+    }
+    return streamedText
+  }, [viewingHistoryIdx, hintHistory, streamedText])
 
   useEffect(() => {
     if (hintUrl) {
@@ -229,6 +289,65 @@ export default function App() {
     }
   }
 
+  // Socratic chat state
+  const [socraticMessages, setSocraticMessages] = useState([])
+  const [isAskingSocratic, setIsAskingSocratic] = useState(false)
+
+  // Handle Socratic follow-up question
+  const handleAskSocratic = useCallback(async (question) => {
+    if (!sessionId || !streamedTextRef.current) return
+    setIsAskingSocratic(true)
+
+    // Optimistically add the user message
+    setSocraticMessages(prev => [...prev, { role: "user", content: question }])
+
+    try {
+      const res = await client.post("/chat/socratic", {
+        session_id: sessionId,
+        last_hint: streamedTextRef.current,
+        question,
+      })
+      setSocraticMessages(prev => [...prev, { role: "model", content: res.data.response }])
+    } catch (err) {
+      console.error("Socratic chat failed:", err)
+      setSocraticMessages(prev => [...prev, {
+        role: "model",
+        content: "Sorry, I couldn't process that. Please try again."
+      }])
+    } finally {
+      setIsAskingSocratic(false)
+    }
+  }, [sessionId])
+
+  // Clear socratic messages when hint changes
+  useEffect(() => {
+    setSocraticMessages([])
+  }, [activeTier])
+
+  // Check syntax handler
+  const handleCheckSyntax = useCallback(async () => {
+    if (!sessionId || !attempt.trim()) return
+    setIsCheckingSyntax(true)
+    setSyntaxError(null)
+    setSyntaxResult(null)
+
+    try {
+      const res = await client.post("/chat/check-syntax", {
+        session_id: sessionId,
+        problem: problem,
+        code: attempt,
+        language: selectedLanguage,
+      })
+      setSyntaxResult(res.data)
+    } catch (err) {
+      console.error("Syntax check failed:", err)
+      const msg = err.response?.data?.detail || "Syntax check failed. Please try again."
+      setSyntaxError(msg)
+    } finally {
+      setIsCheckingSyntax(false)
+    }
+  }, [sessionId, attempt, problem, selectedLanguage])
+
   // In-memory "+ New problem" reset sequence
   async function handleNewProblem() {
     startColdStart()
@@ -255,6 +374,18 @@ export default function App() {
       resetSSE()
       setHintUrl(null)
       
+      // Reset hint history
+      setHintHistory([])
+      setViewingHistoryIdx(null)
+      
+      // Reset socratic chat
+      setSocraticMessages([])
+      setIsAskingSocratic(false)
+      
+      // Reset syntax check state
+      setSyntaxResult(null)
+      setSyntaxError(null)
+      
       // Also resets the right-column tab
       setActiveRightTab("hints")
       
@@ -279,7 +410,15 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col md:flex-row overflow-hidden bg-[var(--bg-page)] relative text-[var(--text-primary)] font-sans antialiased">
+    <div className="h-screen w-screen flex flex-col overflow-hidden bg-[var(--bg-page)] relative text-[var(--text-primary)] font-sans antialiased">
+
+      {/* Top header — Traverse branding */}
+      <div className="flex-shrink-0 w-full flex items-center px-4 py-2 border-b border-[var(--border-default)] bg-white">
+        <span className="text-sm font-bold tracking-wider uppercase">Traverse</span>
+      </div>
+
+      {/* Main content area — left and right columns */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
       {/* Celebration Portal */}
       <CelebrationOverlay show={showCelebration} />
 
@@ -293,8 +432,6 @@ export default function App() {
       {/* Left Panel - Workspace Area (50%) */}
       <div className="w-full md:w-1/2 h-full flex flex-col border-r border-[var(--border-default)]">
         <LeftPanel
-          problem={problem}
-          setProblem={setProblem}
           attempt={attempt}
           setAttempt={setAttempt}
           language={selectedLanguage}
@@ -361,64 +498,80 @@ export default function App() {
               >
                 {STRINGS.tabAnimation}
               </button>
+              <button
+                onClick={() => setActiveRightTab("syntax")}
+                className={`flex-1 py-2.5 text-xs font-semibold tracking-wider uppercase transition-colors ${
+                  activeRightTab === "syntax"
+                    ? "text-[var(--text-primary)] border-b-2 border-black bg-white"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] border-b-2 border-transparent bg-transparent"
+                }`}
+              >
+                {STRINGS.tabSyntax}
+              </button>
             </div>
 
-            {/* Hints tab */}
-            {activeRightTab === "hints" && (
-              <TopRightPanel
-                appState={appState}
-                streamedHint={streamedText}
-                isStreaming={isStreaming}
-                onRequestHint={handleRequestHint}
-                lastUsedTier={lastUsedTier}
-                goalReached={goalReached}
-                onViewOptimal={handleViewOptimal}
-                onNewProblem={handleNewProblem}
-              />
-            )}
+            {/* Sliding tab content */}
+            <div className="flex-1 overflow-hidden">
+              <TabSlider activeIndex={RIGHT_TAB_ORDER.indexOf(activeRightTab)}>
+                {/* Hints tab */}
+                <div className="h-full overflow-y-auto">
+                  <TopRightPanel
+                    appState={appState}
+                    streamedHint={streamedText}
+                    isStreaming={isStreaming}
+                    onRequestHint={handleRequestHint}
+                    lastUsedTier={lastUsedTier}
+                    goalReached={goalReached}
+                    onViewOptimal={handleViewOptimal}
+                    onNewProblem={handleNewProblem}
+                    hintHistory={hintHistory}
+                    viewingHistoryIdx={viewingHistoryIdx}
+                    onNavigateHistory={handleNavigateHistory}
+                    allHintsExhausted={allHintsExhausted}
+                    displayHint={displayHint}
+                    socraticMessages={socraticMessages}
+                    isAskingSocratic={isAskingSocratic}
+                    onAskSocratic={handleAskSocratic}
+                  />
+                </div>
 
-            {/* Animation tab */}
-            {activeRightTab === "animation" && (
-              <div className="flex-1 flex flex-col p-4 overflow-y-auto bg-white">
-                {studentVisualHtml || studentVisualFallback || generatingStudentVisual ? (
-                  <div className="flex-1">
-                    <VisualSandbox
-                      html={studentVisualHtml}
-                      fallbackText={studentVisualFallback}
-                      onRegenerate={handleGenerateStudentVisual}
-                      isLoading={generatingStudentVisual}
-                      isFullscreen={false}
-                      onToggleFullscreen={() => {}}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-4 h-full">
-                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                      Generate an interactive algorithm walkthrough for your current approach.
-                    </p>
-                    <button
-                      onClick={handleGenerateStudentVisual}
-                      disabled={generatingStudentVisual}
-                      className="w-full py-2.5 px-4 bg-black text-xs font-semibold text-white rounded transition-colors hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {generatingStudentVisual ? (
-                        <span className="flex items-center justify-center gap-1.5">
-                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Generating...
-                        </span>
-                      ) : (
-                        STRINGS.generateMyVisual
-                      )}
-                    </button>
-                    <div className="flex-1 flex items-center justify-center">
-                      <p className="text-xs text-[var(--text-muted)] text-center">
-                        Click the button above to generate a visual walkthrough of your approach.
-                      </p>
+                {/* Animation tab */}
+                <div className="h-full p-4 bg-white flex flex-col">
+                  {studentVisualHtml || studentVisualFallback || generatingStudentVisual ? (
+                    <div className="flex-1 min-h-0">
+                      <VisualSandbox
+                        html={studentVisualHtml}
+                        fallbackText={studentVisualFallback}
+                        onRegenerate={handleGenerateStudentVisual}
+                        isLoading={generatingStudentVisual}
+                      />
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                      <p className="text-xs text-[var(--text-muted)] text-center max-w-xs leading-relaxed">
+                        Generate an interactive algorithm walkthrough for your current approach.
+                      </p>
+                      <button
+                        onClick={handleGenerateStudentVisual}
+                        className="py-2 px-4 bg-black text-xs font-semibold text-white rounded hover:bg-gray-800 transition-colors"
+                      >
+                        {STRINGS.generateMyVisual}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Learn Syntax tab */}
+                <div className="h-full overflow-y-auto p-4 bg-white">
+                  <SyntaxDisplayer
+                    syntaxResult={syntaxResult}
+                    isChecking={isCheckingSyntax}
+                    onCheckSyntax={handleCheckSyntax}
+                    error={syntaxError}
+                  />
+                </div>
+              </TabSlider>
+            </div>
 
             {/* Bottom bar with View Optimal button — always visible */}
             <div className="flex-shrink-0 border-t border-[var(--border-default)] bg-[var(--bg-subtle)] px-4 py-3">
@@ -431,6 +584,7 @@ export default function App() {
             </div>
           </>
         )}
+      </div>
       </div>
     </div>
   )

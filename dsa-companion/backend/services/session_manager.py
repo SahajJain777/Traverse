@@ -109,3 +109,46 @@ def append_message(session_id: str, role: str, content: str) -> Optional[dict]:
         _memory_store[key] = raw
 
     return session
+
+
+def append_socratic_message(session_id: str, role: str, content: str) -> Optional[dict]:
+    """Append a message to the socratic_chat thread.
+    Keeps at most the last 5 exchanges (10 messages) to control token usage.
+    """
+    session = get_session(session_id)
+    if session is None:
+        return None
+
+    session.setdefault("socratic_chat", []).append({"role": role, "content": content})
+    # Keep only the last 10 messages (5 exchanges) to cap token usage
+    if len(session["socratic_chat"]) > 10:
+        session["socratic_chat"] = session["socratic_chat"][-10:]
+    key = _session_key(session_id)
+    raw = json.dumps(session)
+
+    if _using_redis:
+        _redis.set(key, raw)
+        _redis.expire(key, SESSION_TTL_SECONDS)
+    else:
+        _memory_store[key] = raw
+
+    return session
+
+
+def clear_socratic_chat(session_id: str) -> Optional[dict]:
+    """Clear the socratic chat thread for the current hint."""
+    session = get_session(session_id)
+    if session is None:
+        return None
+
+    session["socratic_chat"] = []
+    key = _session_key(session_id)
+    raw = json.dumps(session)
+
+    if _using_redis:
+        _redis.set(key, raw)
+        _redis.expire(key, SESSION_TTL_SECONDS)
+    else:
+        _memory_store[key] = raw
+
+    return session

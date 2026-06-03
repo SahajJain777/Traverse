@@ -128,14 +128,14 @@ export default function ComparisonView({
 
           {/* Visual sandbox for optimal solution */}
           {(visualHtml || visualFallback || generatingVisual) && (
-            <VisualSandbox
-              html={visualHtml}
-              fallbackText={visualFallback}
-              onRegenerate={onGenerateVisual}
-              isLoading={generatingVisual}
-              isFullscreen={false}
-              onToggleFullscreen={() => {}}
-            />
+            <div className="h-[400px]">
+              <VisualSandbox
+                html={visualHtml}
+                fallbackText={visualFallback}
+                onRegenerate={onGenerateVisual}
+                isLoading={generatingVisual}
+              />
+            </div>
           )}
         </div>
       </div>
